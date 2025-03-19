@@ -15,17 +15,42 @@ class OrderExporter extends Exporter
     public static function getColumns(): array
     {
         return [
-            ExportColumn::make('customer.name'),
-            ExportColumn::make('order_number'),
-            ExportColumn::make('order_name'),
-            ExportColumn::make('discount'),
-            ExportColumn::make('total'),
-            ExportColumn::make('payment_method')->formatStateUsing(fn ($state) => $state->value),
-            ExportColumn::make('status')->formatStateUsing(fn ($state) => $state->value),
-            ExportColumn::make('created_at'),
+            ExportColumn::make('order_number')
+                ->label('Order Number'),
+            ExportColumn::make('order_name')
+                ->label('Order Name'),
+            ExportColumn::make('customer.name')
+                ->label('Customer Name'),
+            ExportColumn::make('user.name')
+                ->label('User'),
+            ExportColumn::make('discount')
+                ->label('Discount (%)'),
+            ExportColumn::make('total')
+                ->label('Total')
+                ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.')),
+            ExportColumn::make('profit')
+                ->label('Profit')
+                ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.')),
+            ExportColumn::make('customer_cash')
+                ->label('Customer Cash')
+                ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.')),
+            ExportColumn::make('change')
+                ->label('Change')
+                ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.')),
+            ExportColumn::make('payment_method')
+                ->label('Payment Method')
+                ->formatStateUsing(fn ($state) => $state->value),
+            ExportColumn::make('status')
+                ->label('Status')
+                ->formatStateUsing(fn ($state) => $state->value),
+            ExportColumn::make('created_at')
+                ->label('Created At')
+                ->formatStateUsing(fn ($state) => $state->format('d M Y H:i')),
+            ExportColumn::make('updated_at')
+                ->label('Updated At')
+                ->formatStateUsing(fn ($state) => $state->format('d M Y H:i')),
         ];
     }
-
 
     public static function getCompletedNotificationBody(Export $export): string
     {

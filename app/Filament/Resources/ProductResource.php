@@ -17,26 +17,28 @@ use App\Filament\Imports\ProductImporter;
 class ProductResource extends Resource
 {
     use \App\Traits\HasNavigationBadge;
-    
-    protected static ?string $model = Product::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $model = Product::class;
+    protected static ?string $modelLabel = 'Produk';
+
+    protected static ?string $navigationIcon = 'heroicon-o-cube';
+    protected static ?string $navigationLabel = 'Produk';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Group::make([
-                    Forms\Components\FileUpload::make('image')
-                        ->image()
-                        ->disk('public')
-                        ->maxSize(1024)
-                        ->imageCropAspectRatio('1:1')
-                        ->directory('images/products'),
-                ])->columns(2)
-                    ->columnSpan([
-                        'lg' => 2,
-                    ]),
+                // Forms\Components\Group::make([
+                //     Forms\Components\FileUpload::make('image')
+                //         ->image()
+                //         ->disk('public')
+                //         ->maxSize(1024)
+                //         ->imageCropAspectRatio('1:1')
+                //         ->directory('images/products'),
+                // ])->columns(2)
+                //     ->columnSpan([
+                //         'lg' => 2,
+                //     ]),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->live(500)
@@ -52,6 +54,10 @@ class ProductResource extends Resource
                     ->required(),
                 Forms\Components\MarkdownEditor::make('description')
                     ->maxLength(65535)
+                    ->required()
+                    ->validationMessages([
+                        'required' => 'Kolom deskripsi wajib diisi.',
+                    ])
                     ->columnSpanFull(),
                 Forms\Components\Group::make([
                     Forms\Components\TextInput::make('stock_quantity')
@@ -75,7 +81,7 @@ class ProductResource extends Resource
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                Tables\Columns\ImageColumn::make('image')->circular(),
+                // Tables\Columns\ImageColumn::make('image')->circular(),
                 Tables\Columns\TextColumn::make('name')->searchable(),
                 Tables\Columns\TextColumn::make('category.name'),
                 Tables\Columns\TextColumn::make('barcode')
@@ -108,10 +114,22 @@ class ProductResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
-            ])
+                Tables\Filters\SelectFilter::make('category_id')
+                    ->label('Kategori')
+                    ->relationship('category', 'name')
+                    ->searchable(),
+                Tables\Filters\TernaryFilter::make('stock_quantity')
+                    ->label('Stok Tersedia')
+                    ->trueLabel('Ada Stok')
+                    ->falseLabel('Habis')
+                    ->queries(
+                        true: fn ($query) => $query->where('stock_quantity', '>', 0),
+                        false: fn ($query) => $query->where('stock_quantity', '=', 0),
+                    ),
+                ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

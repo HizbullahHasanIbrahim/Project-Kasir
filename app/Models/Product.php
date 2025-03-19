@@ -17,6 +17,17 @@ class Product extends Model
         'price' => 'decimal:2',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($product) {
+            if ($product->image) {
+                Storage::disk('public')->delete($product->image);
+            }
+        });
+    }
+    
     public function stockAdjustments(): HasMany
     {
         return $this->hasMany(StockAdjustment::class);
@@ -40,6 +51,6 @@ class Product extends Model
             set: fn ($value) => str($value)->replace(',', '')
         );
     }
-    
+
 
 }

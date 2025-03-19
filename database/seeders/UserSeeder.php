@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\User;
 
 class UserSeeder extends Seeder
 {
@@ -12,13 +12,40 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        \App\Models\User::create([
+        // Admin
+        User::create([
             'name' => 'admin',
-            'email'  => 'admin@admin.com',
+            'email' => 'admin@admin.com',
             'password' => bcrypt('12345678'),
             'role' => 'admin',
             'email_verified_at' => now(),
         ]);
-    }
 
+        // Petugas 1
+        User::create([
+            'name' => 'Petugas 1',
+            'email' => 'petugas1@petugas.com',
+            'password' => bcrypt('12345678'),
+            'role' => 'cashier',
+            'email_verified_at' => now(),
+        ]);
+
+        // Petugas 2
+        User::create([
+            'name' => 'Petugas 2',
+            'email' => 'petugas2@petugas.com',
+            'password' => bcrypt('12345678'),
+            'role' => 'cashier',
+            'email_verified_at' => now(),
+        ]);
+
+        // Petugas 3
+        User::create([
+            'name' => 'Petugas 3',
+            'email' => 'petugas3@petugas.com',
+            'password' => bcrypt('12345678'),
+            'role' => 'cashier',
+            'email_verified_at' => now(),
+        ]);
+    }
 }

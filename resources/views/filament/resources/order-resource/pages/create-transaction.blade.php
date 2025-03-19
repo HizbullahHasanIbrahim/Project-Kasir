@@ -1,164 +1,342 @@
 <x-filament-panels::page>
-    <x-filament::grid class="gap-6 items-start" default="2">
-        <x-filament::section>
-            <x-slot name="heading">
-                Scan Barcode
-            </x-slot>
-            <x-slot name="description">
-                Scan the product barcode to add it to the order.
-            </x-slot>
+    <style>
+        /* Your existing styles */
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .section {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-heading {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .section-description {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .barcode-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .order-details {
+            margin-top: 20px;
+        }
+
+        .order-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .order-table th,
+        .order-table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .order-table th {
+            background-color: #f5f5f5;
+        }
+
+        .quantity-input,
+        .discount-input,
+        .cash-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .remove-button {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .remove-button:hover {
+            background-color: #ff1a1a;
+        }
+
+        .no-products {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .save-draft-button,
+        .create-transaction-button,
+        .print-receipt-button,
+        .finish-button,
+        .kembali-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .save-draft-button {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
+        .save-draft-button:hover {
+            background-color: #ddd;
+        }
+
+        .create-transaction-button {
+            background-color: #211C84; /* Warna seperti tombol Kembali */
+            color: white;
+        }
+
+        .create-transaction-button:hover {
+            background-color: #1A166B; /* Warna hover yang lebih gelap */
+        }
+
+        .print-receipt-button {
+            background-color: #f0f0f0; /* Warna seperti tombol Simpan sebagai Draft */
+            color: #333;
+        }
+
+        .print-receipt-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .print-receipt-button:hover:not(:disabled) {
+            background-color: #ddd; /* Warna hover yang lebih gelap */
+        }
+
+        .finish-button {
+            background-color: #211C84; /* Warna seperti tombol Kembali */
+            color: white;
+        }
+
+        .finish-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .finish-button:hover:not(:disabled) {
+            background-color: #1A166B; /* Warna hover yang lebih gelap */
+        }
+
+        .kembali-button {
+            background-color: #211C84;
+            color: #fff;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .col-name {
+            width: 40%;
+        }
+
+        .col-quantity {
+            width: 20%;
+        }
+
+        .col-price {
+            width: 20%;
+        }
+
+        .col-action {
+            width: 20%;
+        }
+
+        .cash-input-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .currency-symbol {
+            margin-right: 5px;
+            font-weight: bold;
+        }
+
+        .cash-input {
+            flex: 1;
+        }
+    </style>
+
+    {{-- <!-- Tombol Kembali -->
+    <div style="margin-bottom: 20px;">
+        <a href="{{ url()->previous() }}" class="kembali-button" style="text-decoration: none;">
+            Kembali
+        </a>
+    </div> --}}
+
+    <div class="grid-container">
+        <div class="section">
+            <div class="section-heading">Pindai Barcode</div>
+            <div class="section-description">Pindai barcode produk untuk menambahkannya produk.</div>
             <input
                 type="text"
-                class="w-full text-sm h-10 dark:bg-zinc-800 dark:text-white rounded-md border shadow-sm border-zinc-200 dark:border-zinc-700"
+                class="barcode-input"
                 wire:model.defer="barcode"
                 wire:keydown.enter="addProductByBarcode"
-                placeholder="Scan barcode and press Enter"
+                placeholder="Pindai barcode dan tekan Enter"
                 autofocus
             />
-        </x-filament::section>
+        </div>
 
-        <x-filament::section>
-            <x-slot name="heading">
-                Select Products
-            </x-slot>
-            <x-slot name="description">
-                Choose the products you want to order.
-            </x-slot>
+        <div class="section">
+            <div class="section-heading">Pilih Produk</div>
+            <div class="section-description">Pilih produk.</div>
             {{ $this->form }}
-        </x-filament::section>
+        </div>
 
-        <x-filament::section>
-            <x-slot name="heading">
-                Order Details
-            </x-slot>
-            <div class="-mx-4 flow-root sm:mx-0">
+        <div class="section">
+            <div class="section-heading">Detail Pesanan</div>
+            <div class="order-details">
                 <form wire:submit="finalizeOrder">
-                    <x-table>
+                    <table class="order-table">
                         <colgroup>
-                            <col class="w-full sm:w-1/2">
-                            <col class="sm:w-1/6">
-                            <col class="sm:w-1/6">
-                            <col class="sm:w-1/6">
+                            <col class="col-name">
+                            <col class="col-quantity">
+                            <col class="col-price">
+                            <col class="col-action">
                         </colgroup>
-                        <x-table.thead>
+                        <thead>
                             <tr>
-                                <x-table.th>Name</x-table.th>
-                                <x-table.th>Quantity</x-table.th>
-                                <x-table.th>Price</x-table.th>
-                                <x-table.th>Action</x-table.th>
+                                <th>Nama</th>
+                                <th>Jumlah</th>
+                                <th>Harga</th>
+                                <th>Aksi</th>
                             </tr>
-                        </x-table.thead>
+                        </thead>
                         <tbody>
                         @forelse ($record->orderDetails as $orderDetail)
-                            <x-table.tr>
-                                <x-table.td>
-                                    <div class="font-medium dark:text-white text-zinc-900">
-                                        {{ $orderDetail->product->name }}
-                                    </div>
-                                    <div class="mt-1 truncate text-zinc-500 dark:text-zinc-400">
-                                        Current stock: {{ $orderDetail->product->stock_quantity }}
-                                    </div>
-                                </x-table.td>
-                                <x-table.td>
+                            <tr>
+                                <td>
+                                    <div class="product-name">{{ $orderDetail->product->name }}</div>
+                                    <div class="product-stock">Stok saat ini: {{ $orderDetail->product->stock_quantity }}</div>
+                                </td>
+                                <td>
                                     <input
-                                        class="w-20 text-sm h-8 dark:bg-zinc-800 dark:text-white rounded-md border shadow-sm border-zinc-200 dark:border-zinc-700"
+                                        class="quantity-input"
                                         type="number"
                                         value="{{ $orderDetail->quantity }}"
                                         wire:change="updateQuantity({{ $orderDetail->id }}, $event.target.value)"
                                         min="1"
                                         max="{{ $orderDetail->product->stock_quantity }}"
                                     />
-                                </x-table.td>
-                                <x-table.td class="text-right">
-                                    {{ number_format($orderDetail->price * $orderDetail->quantity) }}
-                                </x-table.td>
-                                <x-table.td>
-                                    <button type="button" wire:click="removeProduct({{ $orderDetail->id }})">
-                                        @svg('heroicon-o-x-mark', [ 'width' => '20px' ])
+                                </td>
+                                <td class="text-right">Rp. {{ number_format($orderDetail->price * $orderDetail->quantity, 0, ',', '.') }}</td>
+                                <td>
+                                    <button type="button" wire:click="removeProduct({{ $orderDetail->id }})" class="remove-button">
+                                        &#10005; <!-- Unicode for 'X' -->
                                     </button>
-                                </x-table.td>
-                            </x-table.tr>
+                                </td>
+                            </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="py-5 text-center dark:text-zinc-500 text-zinc-500">
-                                    No products selected.
-                                </td>
+                                <td colspan="4" class="no-products">Tidak ada produk yang dipilih.</td>
                             </tr>
                         @endforelse
                         </tbody>
-                        <tfoot>
-                        <tr>
-                            <th colspan="2" class="hidden text-right text-sm font-normal text-zinc-500 sm:table-cell">
-                                Subtotal
-                            </th>
-                            <td class="text-right text-sm text-zinc-500">
-                                {{ number_format($record->orderDetails->sum('subtotal')) }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th colspan="2" class="hidden text-right text-sm font-normal dark:text-zinc-400 sm:table-cell">
-                                Discount (%)
-                            </th>
-                            <td class="text-right text-sm text-zinc-500">
-                                <input
-                                    class="w-20 text-sm h-8 dark:bg-zinc-800 dark:text-white rounded-md border shadow-sm border-zinc-200 dark:border-zinc-700"
-                                    type="number"
-                                    wire:model.lazy="discount"
-                                    min="0"
-                                    max="100"
-                                    placeholder="Discount (%)"
-                                />
-                            </td>
-                        </tr>
-                        <tr>
-                            <th colspan="2" class="hidden text-right text-sm font-semibold dark:text-white sm:table-cell">
-                                Total
-                            </th>
-                            <td class="text-right text-sm font-semibold dark:text-white">
-                                @php
-                                    $subtotal = $record->orderDetails->sum('subtotal');
-                                    $discountValue = ($discount / 100) * $subtotal;
-                                    $total = $subtotal - $discountValue;
-                                @endphp
-                                {{ number_format($total) }}
-                            </td>
-                        </tr>
-                        <tr>
-                            <th colspan="2" class="hidden text-right text-sm font-normal dark:text-zinc-400 sm:table-cell">
-                                Customer Cash
-                            </th>
-                            <td class="text-right text-sm text-zinc-500">
-                                <input
-                                    class="w-30 text-sm h-8 dark:bg-zinc-800 dark:text-white rounded-md border shadow-sm border-zinc-200 dark:border-zinc-700"
-                                    type="number"
-                                    wire:model.lazy="customer_cash"
-                                    min="0"
-                                    placeholder="Enter cash amount"
-                                />
-                            </td>
-                        </tr>
-                        <tr>
-                            <th colspan="2" class="hidden text-right text-sm font-semibold dark:text-white sm:table-cell">
-                                Change
-                            </th>
-                            <td class="text-right text-sm font-semibold dark:text-white">
-                                {{ number_format(max(0, $customer_cash - $total)) }}
-                            </td>
-                        </tr>
-
-                        </tfoot>
-                    </x-table>
-
-                    <div class="flex justify-end mt-10">
-                        <x-filament::button type="button" color="gray" wire:click="saveAsDraft">
-                            Save as Draft
-                        </x-filament::button>
-                        <x-filament::button type="submit" class="ml-2">
-                            Create Transaction
-                        </x-filament::button>
-                    </div>
+                    </table>
                 </form>
             </div>
-        </x-filament::section>
-    </x-filament::grid>
+        </div>
+
+        <div class="section">
+            <div class="section-heading">Ringkasan Pembayaran</div>
+                <div class="order-details">
+                    <form wire:submit="finalizeOrder">
+                        <table class="order-table">
+                            <tfoot>
+                                <tr>
+                                    <th colspan="2" class="text-right">Subtotal</th>
+                                    <td class="text-right">Rp. {{ number_format($record->orderDetails->sum('subtotal'), 0, ',', '.') }}</td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2" class="text-right">Diskon (%)</th>
+                                    <td class="text-right">
+                                        <input
+                                            class="discount-input"
+                                            type="number"
+                                            wire:model.lazy="discount"
+                                            min="0"
+                                            max="100"
+                                            placeholder="Diskon (%)"
+                                        />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2" class="text-right">Total</th>
+                                    <td class="text-right">
+                                        @php
+                                            $subtotal = $record->orderDetails->sum('subtotal');
+                                            $discountValue = ($discount / 100) * $subtotal;
+                                            $total = $subtotal - $discountValue;
+                                        @endphp
+                                        Rp. {{ number_format($total, 0, ',', '.') }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2" class="text-right">Uang Customer</th>
+                                    <td class="text-right">
+                                        <div class="cash-input-container">
+                                            <span class="currency-symbol">Rp.</span>
+                                            <input
+                                                class="cash-input"
+                                                type="number"
+                                                wire:model.lazy="customer_cash"
+                                                min="0"
+                                                placeholder="Masukkan jumlah uang"
+                                            />
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th colspan="2" class="text-right">Kembalian</th>
+                                    <td class="text-right">Rp. {{ number_format(max(0, $customer_cash - $total), 0, ',', '.') }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <div class="form-actions">
+                            @if (!$isTransactionCreated)
+                                <button type="button" class="save-draft-button" wire:click="saveAsDraft">Simpan sebagai Draft</button>
+                                <button type="submit" class="create-transaction-button">Buat Transaksi</button>
+                            @else
+                                <button type="button" class="print-receipt-button" wire:click="downloadReceipt">Cetak Nota</button>
+                                <button type="button" class="finish-button" wire:click="redirectToOrders">Selesai</button>
+                            @endif
+                        </div>
+                    </form>
+                </div>
+        </div>
+    </div>
 </x-filament-panels::page>

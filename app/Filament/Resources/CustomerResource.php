@@ -18,8 +18,10 @@ class CustomerResource extends Resource
     use \App\Traits\HasNavigationBadge;
 
     protected static ?string $model = Customer::class;
+    protected static ?string $modelLabel = 'Pelanggan';
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static ?string $navigationLabel = 'Pelanggan';
 
     public static function form(Form $form): Form
     {

@@ -18,10 +18,10 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
         ]);
 
-        \App\Models\Customer::factory(100)->create();
+        \App\Models\Customer::factory(500)->create();
         \App\Models\Product::factory(150)->create();
-        // \App\Models\StockAdjustment::factory(200)->create();
-        // \App\Models\Order::factory(1000)->create();
+        \App\Models\StockAdjustment::factory(5000)->create();
+        \App\Models\Order::factory(20000)->create();
     }
 
 }

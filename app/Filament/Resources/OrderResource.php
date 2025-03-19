@@ -16,14 +16,20 @@ use Exception;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
+use App\Helpers\OrderHelper;
+use App\Filament\Exports\OrderPdfExporter;
+use Filament\Tables\Actions\ExportAction;
 
 class OrderResource extends Resource
 {
     use \App\Traits\HasNavigationBadge;
 
-    protected static ?string $model = Order::class; // penyebab eror karena
+    protected static ?string $model = Order::class;
+    protected static ?string $modelLabel = 'Transaksi';
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+    protected static ?string $navigationLabel = 'Transaksi';
+
 
     public static function form(Form $form): Form
     {
@@ -33,7 +39,7 @@ class OrderResource extends Resource
                     Forms\Components\TextInput::make('order_number')
                         ->label('Order Number')
                         ->required()
-                        ->default(generateSequentialNumber(Order::class))
+                        ->default(OrderHelper::generateSequentialNumber())
                         ->readOnly(),
 
                     Forms\Components\TextInput::make('order_name')
@@ -47,34 +53,53 @@ class OrderResource extends Resource
                         ->default(0)
                         ->numeric(),
 
-                        Forms\Components\Select::make('customer_id')
-                            ->label('Select or Add Customer')
-                            ->relationship('customer', 'name')
-                            ->searchable()
-                            ->preload()
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Customer Name')
-                                    ->required()
-                                    ->maxLength(255),
+                    Forms\Components\Select::make('customer_id')
+                        ->label('Select or Add Customer')
+                        ->relationship('customer', 'name')
+                        ->searchable()
+                        ->preload()
+                        ->createOptionForm([
+                            Forms\Components\TextInput::make('name')
+                                ->label('Customer Name')
+                                ->required()
+                                ->maxLength(255),
 
-                                Forms\Components\TextInput::make('email')
-                                    ->label('Email')
-                                    ->email()
-                                    ->maxLength(255)
-                                    ->required(), // Email is required, so we add this
+                            Forms\Components\TextInput::make('email')
+                                ->label('Email')
+                                ->email()
+                                ->maxLength(255)
+                                ->required(),
 
-                                Forms\Components\TextInput::make('phone_number')
-                                    ->label('Phone Number')
-                                    ->tel()
-                                    ->maxLength(20)
-                                    ->placeholder('Enter phone number'),
+                            Forms\Components\TextInput::make('phone_number')
+                                ->label('Phone Number')
+                                ->tel()
+                                ->maxLength(20)
+                                ->placeholder('Enter phone number'),
 
-                                Forms\Components\Textarea::make('address')
-                                    ->label('Address')
-                                    ->placeholder('Enter customer address...')
-                            ])
-                            ->placeholder('Select an existing customer or add a new one'),
+                            Forms\Components\Textarea::make('address')
+                                ->label('Address')
+                                ->placeholder('Enter customer address...')
+                        ])
+                        ->placeholder('Select an existing customer or add a new one')
+                        ->live() // Memantau perubahan pada field customer
+                        ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            // Jika customer dipilih, set diskon ke 5%
+                            if ($state) {
+                                $set('discount', 5);
+                            } else {
+                                // Jika customer tidak dipilih, set diskon ke 0%
+                                $set('discount', 0);
+                            }
+                        }),
+
+                    Forms\Components\TextInput::make('discount')
+                        ->label('Discount (%)')
+                        ->numeric()
+                        ->default(0)
+                        ->minValue(0)
+                        ->maxValue(100)
+                        ->suffix('%')
+                        ->required(),
 
                     Forms\Components\Group::make([
                         Forms\Components\Select::make('payment_method')
@@ -163,20 +188,34 @@ class OrderResource extends Resource
                     Tables\Actions\Action::make('divider')->label('')->disabled(),
                     Tables\Actions\DeleteAction::make()
                         ->before(function (Order $order) {
-                            $order->orderDetails()->delete();
-                            $order->delete();
-                })
-            ])
-                ->color('gray'),
+                            // Kembalikan stok produk sebelum menghapus order
+                            $order->orderDetails->each(function ($orderDetail) {
+                                $product = $orderDetail->product;
+                                $product->stock_quantity += $orderDetail->quantity; // Gunakan `stock_quantity`
+                                $product->save();
+                            });
 
+                            // Hapus order details
+                            $order->orderDetails()->delete();
+                        }),
+                ])
+                ->color('gray'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make()
-                        ->before(function (\Illuminate\Support\Collection $records) {
-                            $records->each(fn (Order $order) => $order->orderDetails()->delete());
-                        }),
-                ]),
+                Tables\Actions\DeleteBulkAction::make()
+                    ->before(function (\Illuminate\Support\Collection $records) {
+                        $records->each(function (Order $order) {
+                            // Kembalikan stok produk sebelum menghapus order
+                            $order->orderDetails->each(function ($orderDetail) {
+                                $product = $orderDetail->product;
+                                $product->stock_quantity += $orderDetail->quantity; // Gunakan `stock_quantity`
+                                $product->save();
+                            });
+
+                            // Hapus order details
+                            $order->orderDetails()->delete();
+                        });
+                    }),
             ])
             ->headerActions([
                 Tables\Actions\ExportAction::make()
@@ -186,9 +225,7 @@ class OrderResource extends Resource
                     ->icon('heroicon-o-document-text')
                     ->exporter(\App\Filament\Exports\OrderExporter::class),
             ]);
-
     }
-
 
     public static function getRelations(): array
     {
@@ -207,7 +244,7 @@ class OrderResource extends Resource
         ];
     }
 
-    public static function infolist(\Filament\Infolists\Infolist $infolist): \Filament\Infolists\Infolist
+    public static function infolist(Infolist $infolist): Infolist
     {
         return $infolist->schema([
             TextEntry::make('order_number')->color('gray'),
@@ -228,6 +265,14 @@ class OrderResource extends Resource
                 ->sortable(),
             Tables\Columns\TextColumn::make('order_name')
                 ->searchable(),
+            Tables\Columns\TextColumn::make('user.name')
+                ->numeric()
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
+            Tables\Columns\TextColumn::make('customer.name')
+                ->numeric()
+                ->searchable()
+                ->toggleable(isToggledHiddenByDefault: true),
             Tables\Columns\TextColumn::make('discount')
                 ->numeric()
                 ->sortable()
@@ -241,7 +286,6 @@ class OrderResource extends Resource
                     Tables\Columns\Summarizers\Sum::make('total')
                         ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.')),
                 ),
-
             Tables\Columns\TextColumn::make('profit')
                 ->numeric()
                 ->alignEnd()
@@ -251,14 +295,12 @@ class OrderResource extends Resource
                     Tables\Columns\Summarizers\Sum::make('profit')
                         ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.')),
                 ),
-
-            \Filament\Tables\Columns\TextColumn::make('customer_cash')
+            Tables\Columns\TextColumn::make('customer_cash')
                 ->label('Customer Cash')
                 ->sortable()
                 ->money('IDR')
                 ->formatStateUsing(fn ($state) => 'Rp ' . number_format($state ?? 0, 0, ',', '.')),
-
-            \Filament\Tables\Columns\TextColumn::make('change')
+            Tables\Columns\TextColumn::make('change')
                 ->label('Change')
                 ->sortable()
                 ->money('IDR')
@@ -269,13 +311,6 @@ class OrderResource extends Resource
             Tables\Columns\TextColumn::make('status')
                 ->badge()
                 ->color(fn($state) => $state->getColor()),
-
-            Tables\Columns\TextColumn::make('user.name')
-                ->numeric()
-                ->toggleable(isToggledHiddenByDefault: true),
-            Tables\Columns\TextColumn::make('customer.name')
-                ->numeric()
-                ->toggleable(isToggledHiddenByDefault: true),
             Tables\Columns\TextColumn::make('created_at')
                 ->dateTime()
                 ->sortable()
@@ -294,6 +329,4 @@ class OrderResource extends Resource
             OrderResource\Widgets\OrderStats::class,
         ];
     }
-
-
 }

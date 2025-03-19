@@ -10,7 +10,7 @@ class OrderDetail extends Model
 {
     use HasFactory;
 
-    
+
     public function order(): BelongsTo
     {
         return $this->belongsTo(Order::class);
@@ -19,5 +19,12 @@ class OrderDetail extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function returnStock()
+    {
+        $product = $this->product;
+        $product->stock_quantity += $this->quantity; // Gunakan `stock_quantity`
+        $product->save();
     }
 }

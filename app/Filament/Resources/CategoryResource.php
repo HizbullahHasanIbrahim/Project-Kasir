@@ -18,8 +18,10 @@ class CategoryResource extends Resource
     use \App\Traits\HasNavigationBadge;
 
     protected static ?string $model = Category::class;
+    protected static ?string $modelLabel = 'Kategori';
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-folder';
+    protected static ?string $navigationLabel = 'Kategori';
 
     public static function form(Form $form): Form
     {
@@ -27,7 +29,8 @@ class CategoryResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->label('Nama'),
             ]);
     }
 
@@ -36,7 +39,8 @@ class CategoryResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Nama'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -64,6 +68,13 @@ class CategoryResource extends Resource
     {
         return [
             'index' => Pages\ManageCategories::route('/'),
+        ];
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+
         ];
     }
 }

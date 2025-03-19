@@ -18,8 +18,10 @@ class StockAdjustmentResource extends Resource
     use \App\Traits\HasNavigationBadge;
 
     protected static ?string $model = StockAdjustment::class;
+    protected static ?string $modelLabel = 'Managemen Stok';
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-adjustments-horizontal';
+    protected static ?string $navigationLabel = 'Managemen Stok';
 
     public static function form(Form $form): Form
     {

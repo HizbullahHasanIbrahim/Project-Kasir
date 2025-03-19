@@ -22,7 +22,7 @@ class CustomerFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'email' => fake()->safeEmail(),
+            'email' => fake()->unique()->safeEmail(),
             'phone_number' => '08' . rand(1111111111, 9999999999),
             'address' => fake()->address(),
         ];

@@ -15,9 +15,13 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class UserResource extends Resource
 {
+    use \App\Traits\HasNavigationBadge;
+
     protected static ?string $model = User::class;
+    protected static ?string $modelLabel = 'Admin dan Petugas';
 
     protected static ?string $navigationIcon = 'heroicon-o-identification';
+    protected static ?string $navigationLabel = 'Pengguna';
 
     public static function form(Form $form): Form
     {
@@ -47,7 +51,8 @@ class UserResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')
-                    ->searchable(),
+                    ->searchable()
+                    ->label('Nama'),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('role')

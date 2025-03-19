@@ -13,11 +13,14 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Filament\Actions;
 
 class CreateTransaction extends Page
 {
     protected static string $resource = OrderResource::class;
     protected static string $view = 'filament.resources.order-resource.pages.create-transaction';
+    protected static ?string $model = Order::class; // Pastikan model sudah didefinisikan
 
     public Order $record;
     public mixed $selectedProduct;
@@ -25,10 +28,25 @@ class CreateTransaction extends Page
     public $customer_cash = 0;
     public int $discount = 0; // Diskon dalam persen
     public string $barcode = '';
+    public $isTransactionCreated = false;
 
     public function getTitle(): string
     {
-        return "Order: {$this->record->order_number}";
+        // Pastikan $this->record tidak null sebelum mengakses propertinya
+        return "Order: " . ($this->record ? $this->record->order_number : 'Transaksi Baru');
+    }
+
+    public function mount(Order $record): void
+    {
+        // Pastikan record tidak null
+        if (!$record) {
+            abort(404, 'Record tidak ditemukan');
+        }
+
+        $this->record = $record;
+
+        // Set diskon otomatis berdasarkan customer
+        $this->discount = $this->record->customer_id ? 5 : 0;
     }
 
     public function addProductByBarcode(): void
@@ -77,8 +95,6 @@ class CreateTransaction extends Page
         $this->barcode = '';
     }
 
-
-
     protected function getFormSchema(): array
     {
         return [
@@ -124,6 +140,15 @@ class CreateTransaction extends Page
     public function updateOrder(): void
     {
         $subtotal = $this->record->orderDetails->sum('subtotal');
+
+        // Jika customer dipilih, set diskon ke 5%
+        if ($this->record->customer_id) {
+            $this->discount = 5;
+        } else {
+            // Jika customer tidak dipilih, set diskon ke 0%
+            $this->discount = 0;
+        }
+
         $discountValue = ($this->discount / 100) * $subtotal; // Hitung diskon dari persen
         $total = $subtotal - $discountValue;
 
@@ -135,63 +160,77 @@ class CreateTransaction extends Page
 
     public function finalizeOrder(): void
     {
+        $this->isTransactionCreated = true;
+
         $this->updateOrder();
 
         $subtotal = $this->record->orderDetails->sum('subtotal');
         $discountValue = ($this->discount / 100) * $subtotal;
         $total = $subtotal - $discountValue;
 
-        // Validasi apakah customer_cash cukup untuk membayar total
-        if ($this->customer_cash < $total) {
+        // Validasi apakah customer_cash diisi dan cukup untuk membayar total
+        if (!$this->customer_cash || $this->customer_cash < $total) {
             Notification::make()
                 ->title('Transaksi Gagal')
                 ->body('Uang pelanggan tidak cukup untuk membayar transaksi!')
                 ->danger()
                 ->send();
-
             return;
         }
 
         // Hitung kembalian (change)
         $change = max($this->customer_cash - $total, 0);
 
-        // Simpan ke database
-        $this->record->update([
-            'customer_cash' => $this->customer_cash,
-            'change' => $change,
-            'status' => 'completed',
-        ]);
+        // Gunakan transaksi database untuk memastikan semua eksekusi aman
+        DB::transaction(function () use ($total, $change) {
+            // Simpan transaksi ke database
+            $this->record->update([
+                'customer_cash' => $this->customer_cash,
+                'change' => $change,
+                'status' => 'completed',
+            ]);
 
-        // Kurangi stok produk setelah transaksi selesai
-        foreach ($this->record->orderDetails as $orderDetail) {
-            $product = Product::find($orderDetail->product_id);
-            if ($product) {
-                if ($product->stock_quantity >= $orderDetail->quantity) {
-                    $product->decrement('stock_quantity', $orderDetail->quantity);
-                } else {
-                    Notification::make()
-                        ->title('Stok Tidak Cukup')
-                        ->body("Stok produk {$product->name} tidak mencukupi!")
-                        ->danger()
-                        ->send();
-                    return;
+            // Periksa stok sebelum mengurangi stok
+            foreach ($this->record->orderDetails as $orderDetail) {
+                $product = Product::find($orderDetail->product_id);
+                if ($product) {
+                    if ($product->stock_quantity < $orderDetail->quantity) {
+                        Notification::make()
+                            ->title('Stok Tidak Cukup')
+                            ->body("Stok produk {$product->name} tidak mencukupi!")
+                            ->danger()
+                            ->send();
+
+                        // Batalkan transaksi
+                        throw new \Exception("Stok tidak mencukupi untuk {$product->name}");
+                    }
                 }
             }
-        }
 
+            // Jika stok cukup, kurangi stok
+            foreach ($this->record->orderDetails as $orderDetail) {
+                $product = Product::find($orderDetail->product_id);
+                if ($product) {
+                    $product->decrement('stock_quantity', $orderDetail->quantity);
+                }
+            }
+        });
+
+        // Tampilkan notifikasi sukses
         Notification::make()
             ->title('Transaksi Berhasil')
-            ->body("Transaksi dengan total Rp {$total} berhasil diselesaikan!")
+            ->body("Transaksi dengan total Rp " . number_format($total, 0, ',', '.') . " berhasil diselesaikan!")
             ->success()
             ->send();
 
-        $this->redirect('/orders');
+        // $this->redirect('/orders');
     }
 
     public function saveAsDraft(): void
     {
+        $this->isTransactionCreated = true;
         $this->updateOrder();
-        $this->redirect('/orders');
+        // $this->redirect('/orders');
     }
 
     public function updatedCustomerCash()
@@ -199,5 +238,37 @@ class CreateTransaction extends Page
         $subtotal = $this->record->orderDetails->sum('subtotal');
         $discountValue = ($this->discount / 100) * $subtotal;
         $this->total = $subtotal - $discountValue;
+    }
+
+    public function downloadReceipt()
+    {
+        // Generate PDF
+        $pdf = Pdf::loadView('pdf.print-order', [
+            'order' => $this->record,
+        ]);
+
+        // Download PDF
+        return response()->streamDownload(
+            function () use ($pdf) {
+                echo $pdf->stream();
+            },
+            'receipt-' . $this->record->order_number . '.pdf'
+        );
+    }
+
+    public function redirectToOrders()
+    {
+        return $this->redirect('/orders');
+    }
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            // Tombol Kembali
+            Actions\Action::make('back')
+                ->label('Kembali')
+                ->color('secondary')
+                ->url(fn () => url()->previous()),
+        ];
     }
 }
