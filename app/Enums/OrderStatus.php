@@ -21,6 +21,7 @@ enum OrderStatus: string
             self::PENDING => 'warning',
             self::COMPLETED => 'success',
             self::CANCELLED => 'danger',
+            default => 'gray',
         };
     }
 }

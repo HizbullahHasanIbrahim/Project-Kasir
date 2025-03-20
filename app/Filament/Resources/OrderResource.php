@@ -19,6 +19,8 @@ use Filament\Infolists\Infolist;
 use App\Helpers\OrderHelper;
 use App\Filament\Exports\OrderPdfExporter;
 use Filament\Tables\Actions\ExportAction;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Database\Eloquent\Collection;
 
 class OrderResource extends Resource
 {
@@ -29,7 +31,6 @@ class OrderResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
     protected static ?string $navigationLabel = 'Transaksi';
-
 
     public static function form(Form $form): Form
     {
@@ -154,7 +155,23 @@ class OrderResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('print')
+                Tables\Actions\Action::make('pdf')
+                    ->button()
+                    ->label('Laporan PDF')
+                    ->icon('heroicon-o-clipboard-document-check')
+                    ->action(function (Order $record) {
+                        // Render PDF dengan mengirim variabel $record sebagai array
+                        $html = Blade::render('pdf', ['records' => [$record]]);
+
+                        // Generate PDF
+                        $pdf = Pdf::loadHtml($html);
+
+                        // Download PDF
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo $pdf->stream();
+                        }, $record->order_number . '-laporan.pdf');
+                    }),
+                Tables\Actions\Action::make('Struk')
                     ->button()
                     ->color('gray')
                     ->icon('heroicon-o-printer')
@@ -169,13 +186,12 @@ class OrderResource extends Resource
                     }),
 
                 Tables\Actions\ActionGroup::make([
-                    Tables\Actions\ViewAction::make()
-                        ->color('gray'),
+                    Tables\Actions\ViewAction::make(),
                     Tables\Actions\EditAction::make()
-                        ->color('gray'),
+                        ->label('Edit Transaksi'),
                     Tables\Actions\Action::make('edit-transaction')
                         ->visible(fn (Order $record) => $record->status === \App\Enums\OrderStatus::PENDING)
-                        ->label('Edit Transaction')
+                        ->label('Edit Detail Transaksi')
                         ->icon('heroicon-o-pencil')
                         ->url(fn ($record) => "/orders/{$record->order_number}"),
                     Tables\Actions\Action::make('mark-as-complete')
@@ -198,8 +214,7 @@ class OrderResource extends Resource
                             // Hapus order details
                             $order->orderDetails()->delete();
                         }),
-                ])
-                ->color('gray'),
+                    ]),
             ])
             ->bulkActions([
                 Tables\Actions\DeleteBulkAction::make()
@@ -215,6 +230,21 @@ class OrderResource extends Resource
                             // Hapus order details
                             $order->orderDetails()->delete();
                         });
+                    }),
+                Tables\Actions\BulkAction::make('generate_pdf')
+                    ->label('Generate PDF')
+                    ->icon('heroicon-o-clipboard-document-check')
+                    ->action(function (Collection $records) { // Ganti type hinting
+                        // Render PDF untuk semua record yang dipilih
+                        $html = Blade::render('pdf', ['records' => $records]);
+
+                        // Generate PDF
+                        $pdf = Pdf::loadHtml($html);
+
+                        // Download PDF
+                        return response()->streamDownload(function () use ($pdf) {
+                            echo $pdf->stream();
+                        }, 'laporan-transaksi.pdf');
                     }),
             ])
             ->headerActions([
